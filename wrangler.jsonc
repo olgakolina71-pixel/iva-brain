@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "iva-brain",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-11-21",
+  "durable_objects": {
+    "bindings": [
+      { "name": "BRAIN", "class_name": "IVABrain" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["IVABrain"] }
+  ],
+  "observability": { "enabled": true }
+}
