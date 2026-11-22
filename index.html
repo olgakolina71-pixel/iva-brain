@@ -55,7 +55,7 @@ if(/^(окак|ого|ух ты|вау|лол|ахах|хаха|пхах|ясн�
 if(/^(спасибо|спс|благодарю)\b/.test(n))return'thanks';
 if(/^(пока|до свидания|увидимся)\b/.test(n))return'farewell';
 if(/[?？]$/.test(q.trim())||/^(что|кто|где|когда|почему|зачем|сколько|как|можно ли|правда ли|это ли|разве)\b/.test(n))return'question';
-if(/^\\/teach\s+/i.test(q))return'teach';
+if(/^\/teach\s+/i.test(q))return'teach';
 if(parseFact(q))return'assertion';
 return'conversation';
 }
