@@ -1,0 +1,33 @@
+name: Run IVA Brain experiments
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-experiment01.txt
+      - name: Run all experiments
+        run: |
+          set -e
+          python -m experiments.experiment_01
+          python -m experiments.experiment_02
+          python -m experiments.experiment_03
+          python -m experiments.experiment_04
+          python -m experiments.experiment_05
+      - name: Upload checkpoints
+        uses: actions/upload-artifact@v4
+        with:
+          name: iva-brain-experiment-checkpoints
+          path: iva_exp*_checkpoint.pt
+          if-no-files-found: error
