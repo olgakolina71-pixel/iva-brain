@@ -1,46 +1,49 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1020"><title>IVA — чат</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1020;--panel:#111a2e;--line:#283653;--text:#edf2ff;--muted:#9aa9c5;--accent:#8878f5}
+:root{color-scheme:dark;--line:#283653;--text:#edf2ff;--muted:#9aa9c5;--accent:#8878f5}
 *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at top,#20285b 0,#0b1020 60%);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:14px}
 .app{width:min(850px,100%);height:min(920px,calc(100dvh - 28px));min-height:480px;background:#0e1729ed;border:1px solid var(--line);border-radius:24px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 90px #0008}
-header{display:flex;align-items:center;gap:13px;padding:17px 20px;background:#131e34;border-bottom:1px solid var(--line)}
-.logo{width:44px;height:44px;border-radius:15px;background:linear-gradient(135deg,#8b7cff,#42c5d6);display:grid;place-items:center;font-weight:900}
+header{display:flex;align-items:center;gap:13px;padding:17px 20px;background:#131e34;border-bottom:1px solid var(--line)}.logo{width:44px;height:44px;border-radius:15px;background:linear-gradient(135deg,#8b7cff,#42c5d6);display:grid;place-items:center;font-weight:900}
 h1{font-size:18px;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:2px}.status{margin-left:auto;color:#8fe0bd;font-size:12px}
-#messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:13px}
-.msg{max-width:82%;padding:12px 15px;border-radius:18px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.user{align-self:flex-end;background:#695bd3;border-bottom-right-radius:5px}.iva{align-self:flex-start;background:#1a2943;border:1px solid #30415d;border-bottom-left-radius:5px}.who{font-size:11px;color:#b8c4dd;margin-bottom:4px}
-#typing{height:28px;padding:0 20px;color:var(--muted);font-size:13px}
-form{display:flex;gap:10px;padding:13px;background:#131e34;border-top:1px solid var(--line)}
+#messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:13px}.msg{max-width:82%;padding:12px 15px;border-radius:18px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.user{align-self:flex-end;background:#695bd3;border-bottom-right-radius:5px}.iva{align-self:flex-start;background:#1a2943;border:1px solid #30415d;border-bottom-left-radius:5px}.who{font-size:11px;color:#b8c4dd;margin-bottom:4px}.source{display:inline-block;margin-top:9px;color:#a9b9ff;font-size:12px}
+#typing{height:28px;padding:0 20px;color:var(--muted);font-size:13px}form{display:flex;gap:10px;padding:13px;background:#131e34;border-top:1px solid var(--line)}
 textarea{flex:1;resize:none;min-height:48px;max-height:130px;border:1px solid #394967;border-radius:15px;background:#0b1325;color:white;padding:12px;font:inherit;outline:none}textarea:focus{border-color:var(--accent)}
-button{border:0;border-radius:14px;padding:0 19px;background:var(--accent);color:white;font-weight:700}button:disabled{opacity:.5}
-.tools{display:flex;justify-content:space-between;align-items:center;padding:0 16px 12px;color:#8392b0;font-size:11px}.tools button{background:transparent;color:#aeb9d2;padding:5px 8px;font-weight:500}
+button{border:0;border-radius:14px;padding:0 19px;background:var(--accent);color:white;font-weight:700}button:disabled{opacity:.5}.tools{display:flex;justify-content:space-between;align-items:center;padding:0 16px 12px;color:#8392b0;font-size:11px}.tools button{background:transparent;color:#aeb9d2;padding:5px 8px;font-weight:500}
 @media(max-width:560px){body{padding:0}.app{height:100dvh;min-height:0;border:0;border-radius:0}.msg{max-width:90%}header{padding:14px 16px}#messages{padding:15px}form{padding:10px}}
 </style></head><body><main class="app">
-<header><div class="logo">IVA</div><div><h1>IVA</h1><div class="sub">IVA Brain · мобильный чат</div></div><div class="status">● в браузере</div></header>
-<section id="messages" aria-live="polite"><div class="msg iva"><div class="who">IVA</div>Привет! Я IVA. Напиши мне сообщение — я немного подумаю и отвечу.</div></section>
+<header><div class="logo">IVA</div><div><h1>IVA</h1><div class="sub">IVA Brain · интернет-режим</div></div><div class="status">● онлайн-поиск</div></header>
+<section id="messages" aria-live="polite"><div class="msg iva"><div class="who">IVA</div>Привет! Я IVA. Теперь я могу искать справочную информацию в интернете через Википедию. Напиши вопрос!</div></section>
 <div id="typing"></div><form id="form"><textarea id="input" rows="1" maxlength="2000" placeholder="Напиши сообщение…"></textarea><button id="send" type="submit">Отправить</button></form>
-<div class="tools"><span id="memory-count">Память на этом устройстве</span><button id="clear" type="button">Очистить память</button></div>
+<div class="tools"><span id="memory-count">Локальная память</span><button id="clear" type="button">Очистить память</button></div>
 </main>
 <script>
 const KEY='iva_brain_browser_memory_v1',STOP=new Set('это как что кто где когда почему зачем ли а и в на я ты мы вы он она они мне меня тебя про для же ну'.split(' '));
-let memory={turns:[]};try{const saved=JSON.parse(localStorage.getItem(KEY)||'{}');if(Array.isArray(saved.turns))memory=saved}catch{}
+let memory={turns:[],knowledge:[]};try{const saved=JSON.parse(localStorage.getItem(KEY)||'{}');if(Array.isArray(saved.turns))memory.turns=saved.turns;if(Array.isArray(saved.knowledge))memory.knowledge=saved.knowledge}catch{}
 const $=s=>document.querySelector(s),messages=$('#messages'),input=$('#input'),send=$('#send'),typing=$('#typing');
-function save(){memory.turns=memory.turns.slice(-150);try{localStorage.setItem(KEY,JSON.stringify(memory))}catch{}$('#memory-count').textContent='Запомнено диалогов: '+memory.turns.length}
-function add(text,who){const n=document.createElement('div');n.className='msg '+who;const w=document.createElement('div');w.className='who';w.textContent=who==='user'?'Ты':'IVA';const p=document.createElement('div');p.textContent=text;n.append(w,p);messages.append(n);messages.scrollTop=messages.scrollHeight}
-function words(s){return (s.toLowerCase().match(/[а-яёa-z0-9]+/g)||[])}
+function save(){memory.turns=memory.turns.slice(-150);memory.knowledge=memory.knowledge.slice(-100);try{localStorage.setItem(KEY,JSON.stringify(memory))}catch{}$('#memory-count').textContent='Диалогов: '+memory.turns.length+' · знаний: '+memory.knowledge.length}
+function add(text,who,source){const n=document.createElement('div');n.className='msg '+who;const w=document.createElement('div');w.className='who';w.textContent=who==='user'?'Ты':'IVA';const p=document.createElement('div');p.textContent=text;n.append(w,p);if(source){const a=document.createElement('a');a.className='source';a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Источник: '+source.title+' · Википедия';n.append(a)}messages.append(n);messages.scrollTop=messages.scrollHeight}
+function words(s){return(s.toLowerCase().match(/[а-яёa-z0-9]+/g)||[])}
 function keys(s){return new Set(words(s).filter(w=>!STOP.has(w)&&w.length>1))}
-function retrieve(q){const a=keys(q);if(!a.size)return null;let best=0,answer=null;for(const pair of memory.turns){const b=keys(pair.user);if(!b.size)continue;let n=0;for(const x of a)if(b.has(x))n++;const score=n/(a.size+b.size-n);if(score>best){best=score;answer=pair.iva}}return best>=.42?answer:null}
-function reply(q){const s=q.toLowerCase(),w=words(s);let answer=retrieve(q);
-if(!answer&&w.some(x=>['привет','здравствуй','хай','ку'].includes(x)))answer='Привет! Как настроение? О чём хочешь поговорить?';
-if(!answer&&(/кто ты|как тебя зовут|что ты такое/.test(s)))answer='Я IVA — экспериментальная программа, которая учится на сохранённых диалогах.';
-if(!answer&&(/как дела|как ты/.test(s)))answer='Я на связи и готова продолжать разговор. А у тебя как?';
-if(!answer&&w.some(x=>['спасибо','спс','благодарю'].includes(x)))answer='Пожалуйста! Что ещё обсудим?';
-if(!answer&&w.some(x=>['пока','увидимся'].includes(x)))answer='Пока! До следующего разговора.';
-if(!answer&&s.includes('?'))answer='Пока я не нашла уверенного ответа. Можешь рассказать об этом подробнее? Я сохраню наш разговор.';
-if(!answer){const topic=w.find(x=>x.length>4);answer=topic?'Ты заговорил(а) о «'+topic+'». Что именно тебе в этом интересно?':'Я тебя слушаю. Расскажи чуть подробнее?'}
-return answer}
-async function submit(){const q=input.value.trim();if(!q||send.disabled)return;add(q,'user');input.value='';input.style.height='auto';send.disabled=true;typing.textContent='IVA думает…';await new Promise(r=>setTimeout(r,3000));const a=reply(q);add(a,'iva');memory.turns.push({user:q,iva:a,time:Date.now()});save();typing.textContent='';send.disabled=false;input.focus()}
+function score(a,b){let n=0;for(const x of a)if(b.has(x))n++;return n/(a.size+b.size-n||1)}
+function retrieve(q){const a=keys(q);if(!a.size)return null;let best=0,answer=null;for(const pair of memory.turns){const b=keys(pair.user||'');const v=score(a,b);if(v>best){best=v;answer=pair.iva}}return best>=.48?{text:answer}:null}
+function retrieveKnowledge(q){const a=keys(q);let best=0,found=null;for(const item of memory.knowledge){const b=keys(item.query||'');const v=score(a,b);if(v>best){best=v;found=item}}return best>=.58&&found?{text:found.text,source:found.source}:null}
+function isQuestion(q){return/[?？]/.test(q)||/^(что|кто|где|когда|почему|зачем|сколько|как|найди|поищи|расскажи|объясни)\b/i.test(q.trim())}
+function searchQuery(q){return q.replace(/^(найди|поищи|расскажи|объясни)\s+/i,'').replace(/[?？]+$/,'').trim()}
+async function internetSearch(q){const query=searchQuery(q);if(!query)return null;const endpoint='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=1&format=json&origin=*';const res=await fetch(endpoint,{headers:{Accept:'application/json'}});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const hit=data.query?.search?.[0];if(!hit)return null;const pageRes=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=1500&pageids='+hit.pageid+'&format=json&origin=*',{headers:{Accept:'application/json'}});if(!pageRes.ok)throw new Error('HTTP '+pageRes.status);const pageData=await pageRes.json();const page=pageData.query?.pages?.[hit.pageid];if(!page?.extract)return null;const item={query,text:page.extract.slice(0,1500),source:{title:page.title,url:'https://ru.wikipedia.org/?curid='+hit.pageid},time:Date.now()};memory.knowledge.push(item);save();return{text:item.text,source:item.source}}
+async function reply(q){const s=q.toLowerCase(),w=words(s);
+if(w.some(x=>['привет','здравствуй','хай','ку'].includes(x)))return{text:'Привет! Как настроение? О чём хочешь поговорить?'};
+if(/кто ты|как тебя зовут|что ты такое/.test(s))return{text:'Я IVA — экспериментальная программа с собственной памятью, поиском информации и простым механизмом обучения на примерах. Я пока не большая языковая нейросеть.'};
+if(/как дела|как ты/.test(s))return{text:'Я на связи и готова продолжать разговор. А у тебя как?'};
+if(w.some(x=>['спасибо','спс','благодарю'].includes(x)))return{text:'Пожалуйста! Что ещё обсудим?'};
+if(w.some(x=>['пока','увидимся'].includes(x)))return{text:'Пока! До следующего разговора!'};
+const learned=retrieve(q);if(learned)return learned;
+const known=retrieveKnowledge(q);if(known)return known;
+if(isQuestion(q)){try{const found=await internetSearch(q);if(found)return found;return{text:'Я поискала в русской Википедии, но не нашла подходящей статьи. Пока не хочу придумывать ответ.'}}catch(e){return{text:'Не получилось подключиться к интернет-поиску. Проверь соединение и попробуй ещё раз.'}}}
+const topic=w.find(x=>x.length>4);return{text:topic?'Ты заговорил(а) о «'+topic+'». Расскажешь подробнее?':'Я тебя слушаю. Расскажи чуть подробнее?'};
+}
+async function submit(){const q=input.value.trim();if(!q||send.disabled)return;add(q,'user');input.value='';input.style.height='auto';send.disabled=true;typing.textContent='IVA думает и ищет информацию…';await new Promise(r=>setTimeout(r,900));const result=await reply(q);add(result.text,'iva',result.source);memory.turns.push({user:q,iva:result.text,source:result.source||null,time:Date.now()});save();typing.textContent='';send.disabled=false;input.focus()}
 $('#form').addEventListener('submit',e=>{e.preventDefault();submit()});input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit()}});input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,130)+'px'});
-$('#clear').addEventListener('click',()=>{if(confirm('Очистить память IVA на этом устройстве?')){memory={turns:[]};save();messages.innerHTML='';add('Память очищена. Начнём новый разговор?','iva')}});
+$('#clear').addEventListener('click',()=>{if(confirm('Очистить память IVA на этом устройстве?')){memory={turns:[],knowledge:[]};save();messages.innerHTML='';add('Память очищена. Начнём новый разговор?','iva')}});
 save();
 </script></body></html>
