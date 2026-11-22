@@ -10,7 +10,8 @@ The repository contains a small online world-model prototype and five focused ex
 2. **Experiment 02 — Model-based planning:** use the learned predictor to plan toward an externally supplied goal.
 3. **Experiment 03 — Intrinsic goals:** select goals from novelty/uncertainty heuristics and attempt them using the learned model.
 4. **Experiment 04 — Changing world:** change the environment mid-run and measure prediction surprise and online adaptation.
-5. **Experiment 05 — Skill discovery:** mine repeated action chunks from self-generated experience, store useful chunks as skills, and test their transfer to new start/goal pairs. This is not Q-learning.
+5. **Experiment 05 — Skill discovery:** mine repeated action chunks from self-generated experience and store useful chunks as skills. This is not Q-learning.
+6. **Experiment 06 — Skill transfer:** test a skill library learned in one map against fresh randomized maps and compare progress with a random-action baseline.
 
 These are narrow, controlled experiments. Curiosity and goal selection are explicit heuristics, not human-like feelings or evidence of consciousness.
 
@@ -24,9 +25,10 @@ python -m experiments.experiment_02
 python -m experiments.experiment_03
 python -m experiments.experiment_04
 python -m experiments.experiment_05
+python -m experiments.experiment_06
 ```
 
-Each experiment writes a checkpoint in the current working directory. Experiments 02–05 reuse the online learner from Experiment 01.
+Each experiment writes a checkpoint in the current working directory. Experiments 02–06 reuse components from earlier experiments. Experiment 06 is a controlled transfer test; its evaluation protocol and baseline should be interpreted carefully.
 
 ## Project constraints
 - No external training dataset for these experiments.
@@ -40,5 +42,5 @@ Each experiment writes a checkpoint in the current working directory. Experiment
 - Does model-based planning improve goal success over simple baselines?
 - Can intrinsic-goal selection be evaluated without tuning to one environment?
 - Can the agent detect when its model becomes unreliable and adapt efficiently?
-- Do discovered action chunks transfer to new contexts better than random chunks?
+- Do discovered action chunks transfer to new contexts better than random actions?
 - How should experience and checkpoints persist across restarts?
