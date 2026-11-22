@@ -29,8 +29,28 @@ function score(a,b){let n=0;for(const x of a)if(b.has(x))n++;return n/(a.size+b.
 function retrieve(q){const a=keys(q);if(!a.size)return null;let best=0,answer=null;for(const pair of memory.turns){const b=keys(pair.user||'');const v=score(a,b);if(v>best){best=v;answer=pair.iva}}return best>=.48?{text:answer}:null}
 function retrieveKnowledge(q){const a=keys(q);let best=0,found=null;for(const item of memory.knowledge){const b=keys(item.query||'');const v=score(a,b);if(v>best){best=v;found=item}}return best>=.58&&found?{text:found.text,source:found.source}:null}
 function isQuestion(q){const t=q.trim().toLowerCase();return /[?？]/.test(t)||/^(что|кто|где|когда|почему|зачем|сколько|как|какой|какая|какие|чем|чья|чей|чьё|найди|поищи|расскажи|объясни|определи|посчитай|вычисли|это)\b/i.test(t)||/\b(почему|зачем|сколько|значит|означает)\b/i.test(t)}
-function searchQuery(q){return q.trim().replace(/^(найди|поищи|расскажи|объясни|определи)\s+/i,'').replace(/^(что такое|кто такой|кто такая|кто такие|где находится|когда произошло|почему|зачем|сколько|какой|какая|какие|чем)\s+/i,'').replace(/[?？]+$/,'').trim()}
-async function internetSearch(q){const query=searchQuery(q);if(!query||query.length<2||/^\d+$/.test(query))return null;const endpoint='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=1&format=json&origin=*';const res=await fetch(endpoint,{headers:{Accept:'application/json'}});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const hit=data.query?.search?.[0];if(!hit)return null;const pageRes=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=1500&pageids='+hit.pageid+'&format=json&origin=*',{headers:{Accept:'application/json'}});if(!pageRes.ok)throw new Error('HTTP '+pageRes.status);const pageData=await pageRes.json();const page=pageData.query?.pages?.[hit.pageid];if(!page?.extract)return null;const item={query,text:page.extract.slice(0,1500),source:{title:page.title,url:'https://ru.wikipedia.org/?curid='+hit.pageid},time:Date.now()};memory.knowledge.push(item);save();return{text:item.text,source:item.source}}
+function searchQuery(q){
+ let t=q.trim().replace(/[?？]+$/,'').replace(/^(найди|поищи|расскажи|объясни|определи)\s+/i,'');
+ const age=t.match(/^сколько\s+лет\s+(.+)$/i);if(age)return age[1].trim()+' возраст персонажа';
+ return t.replace(/^(что такое|кто такой|кто такая|кто такие|где находится|когда произошло|почему|зачем|сколько|какой|какая|какие|чем)\s+/i,'').trim()
+}
+async function internetSearch(q){
+ const query=searchQuery(q);if(!query||query.length<2||/^\d+$/.test(query))return null;
+ const endpoint='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=5&format=json&origin=*';
+ const res=await fetch(endpoint,{headers:{Accept:'application/json'}});if(!res.ok)throw new Error('HTTP '+res.status);
+ const hits=(await res.json()).query?.search||[];if(!hits.length)return null;
+ const original=q.toLowerCase(),subject=searchQuery(q).toLowerCase().split(/\s+/).filter(x=>x.length>2);
+ const ranked=hits.map(hit=>{let title=hit.title.toLowerCase(),score=subject.filter(x=>title.includes(x)).length*4;
+ if(/сколько лет/.test(original)&&/(возраст|персонаж|игровой персонаж)/.test(title))score+=5;
+ if(/в кино|фильм|мультфильм/.test(title)&&!/фильм|кино/.test(original))score-=8;
+ return{hit,score}}).sort((a,b)=>b.score-a.score);
+ const chosen=ranked[0];if(!chosen||chosen.score<1)return null;
+ const pageRes=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=1800&pageids='+chosen.hit.pageid+'&format=json&origin=*',{headers:{Accept:'application/json'}});
+ if(!pageRes.ok)throw new Error('HTTP '+pageRes.status);
+ const page=(await pageRes.json()).query?.pages?.[chosen.hit.pageid];if(!page?.extract)return null;
+ const item={query,text:page.extract.slice(0,1800),source:{title:page.title,url:'https://ru.wikipedia.org/?curid='+chosen.hit.pageid},time:Date.now()};
+ memory.knowledge.push(item);save();return{text:item.text,source:item.source}
+}
 function compose(topic){const clean=topic.replace(/[?!.]+$/,'').trim();const variants=['Ты упомянул «'+clean+'».','Я понял, что речь о «'+clean+'».','Тема разговора — «'+clean+'».'];return variants[Math.floor(Math.random()*variants.length)]}
 function numberAnswer(n){const x=Number(n);if(!Number.isFinite(x))return null;return 'Число '+n+' — '+(x%1===0?'целое':'дробное')+' число.'+(x%1===0?(x%2===0?' Оно чётное.':' Оно нечётное.'):'')+' Могу рассказать и другие свойства числа.'}
 function calculate(q){let t=q.toLowerCase().replace(/^(сколько будет|посчитай|вычисли)\s*/,'').replace(/ умножить на /g,'*').replace(/\s*(плюс|\+|минус|-)\s*/g,m=>m.includes('минус')||m.includes('-')?'-':'+').replace(/\s*(\*|×|:|÷|\/)\s*/g,m=>m.includes(':')||m.includes('÷')||m.includes('/')?'/':'*').trim();if(!/^[0-9.()\s+*\/-]+$/.test(t)||!t)return null;try{const tokens=t.match(/\d+(?:\.\d+)?|[()+*\/-]/g)||[];if(tokens.join('')!==t.replace(/\s/g,''))return null;let pos=0;function expr(){let v=term();while(tokens[pos]==='+'||tokens[pos]==='-'){const op=tokens[pos++],r=term();v=op==='+'?v+r:v-r}return v}function term(){let v=factor();while(tokens[pos]==='*'||tokens[pos]==='/'){const op=tokens[pos++],r=factor();if(op==='/'&&r===0)throw Error();v=op==='*'?v*r:v/r}return v}function factor(){if(tokens[pos]==='-'){pos++;return-factor()}if(tokens[pos]==='+'){pos++;return factor()}if(tokens[pos]==='('){pos++;const v=expr();if(tokens[pos++]!==')')throw Error();return v}const n=Number(tokens[pos++]);if(!Number.isFinite(n))throw Error();return n}const result=expr();if(pos!==tokens.length||!Number.isFinite(result))return null;return String(Number(result.toFixed(10)))}catch{return null}}
