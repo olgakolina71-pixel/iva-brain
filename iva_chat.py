@@ -16,12 +16,22 @@ def main() -> None:
             break
         if message == "/help":
             print("Команды:")
-            print("/teach ТЕКСТ — обучить меня примеру или простому факту")
+            print("/teach ТЕКСТ — научить факту или фразе")
+            print("/learn ВОПРОС || ОТВЕТ — сохранить пример диалога")
             print("/generate — собрать фразу из выученных связей слов")
-            print("/facts — показать сохранённые понятия и связи")
-            print("/memory — показать объём локальной памяти")
-            print("/reset — удалить историю, примеры и факты")
+            print("/facts — показать факты")
+            print("/memory — показать количество примеров и диалогов")
+            print("/reset — очистить локальную память")
             print("/exit — выход")
+            continue
+        if message.startswith("/learn "):
+            payload = message[len("/learn "):]
+            if "||" not in payload:
+                print("IVA: Формат: /learn вопрос || правильный ответ")
+                continue
+            user_text, iva_text = payload.split("||", 1)
+            ok = iva.learn_dialogue(user_text, iva_text)
+            print("IVA: " + ("Запомнила пример диалога." if ok else "Добавь вопрос и ответ."))
             continue
         if message.startswith("/teach "):
             count = iva.teach(message[len("/teach "):])
@@ -33,17 +43,17 @@ def main() -> None:
         if message == "/facts":
             facts = iva.memory.get("facts", [])
             if not facts:
-                print("IVA: Пока нет фактов. Попробуй /teach робот это машина.")
+                print("IVA: Пока нет фактов. Например: /teach робот это машина")
             else:
                 for fact in facts:
                     print(f"• {fact['subject']} — {fact['relation']} — {fact['object']}")
             continue
         if message == "/memory":
-            print(f"IVA: Реплик: {len(iva.memory.get('turns', []))}; примеров: {len(iva.memory.get('examples', []))}; фактов: {len(iva.memory.get('facts', []))}.")
+            print(f"IVA: Реплик: {len(iva.memory.get('turns', []))}; фраз: {len(iva.memory.get('examples', []))}; фактов: {len(iva.memory.get('facts', []))}; диалогов: {len(iva.memory.get('dialogues', []))}.")
             continue
         if message == "/reset":
             iva.reset_memory()
-            print("IVA: История, примеры и факты удалены.")
+            print("IVA: Локальная память очищена.")
             continue
         print("IVA:", iva.reply(message))
 
