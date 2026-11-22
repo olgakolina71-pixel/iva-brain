@@ -2,7 +2,7 @@
 
 IVA Brain is an experimental project exploring learning from its own interaction—not from external training datasets, SFT, or LoRA. It is **not** a finished AI or evidence of consciousness.
 
-## IVA Language v0.4 — conversation learning
+## IVA browser chat\n\nRun `python iva_server.py` with Python 3.10+, then open **http://127.0.0.1:8765**. You can send messages in a browser; IVA shows a short thinking indicator and replies after about 3 seconds. The server uses only Python's standard library, downloads no model or dataset, and listens on localhost only.\n\nThe delay is a short processing pause, not evidence of deep reasoning. IVA's current response engine remains rule-based and retrieval-based, not a general language model. It automatically saves recent chat turns locally in `iva_memory.json`; manual `/teach` and `/learn` commands are not required for normal chat.\n\n## IVA Language v0.4 — conversation learning
 
 Run with Python 3.10+:
 
