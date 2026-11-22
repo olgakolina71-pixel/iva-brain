@@ -44,9 +44,9 @@ if(/^это\s+(заготовка|шаблон|скрипт)[.!?？]*$/i.test(q.
 if(/как дела|как ты/.test(s))return{text:'Я на связи и готов продолжать разговор. А у тебя как?'};
 if(w.some(x=>['спасибо','спс','благодарю'].includes(x)))return{text:'Пожалуйста! Что ещё обсудим?'};
 if(w.some(x=>['пока','увидимся'].includes(x)))return{text:'Пока! До следующего разговора!'};
+const parsed=classify(q);if(parsed.intent==='number')return{text:numberAnswer(parsed.value)};
 const learned=keys(q).size>=2?retrieve(q):null;if(learned)return learned;
-const known=retrieveKnowledge(q);if(known)return known;
-const parsed=classify(q);if(parsed.intent==='number')return{text:numberAnswer(parsed.value)};if(isQuestion(q)){if(keys(q).size<2)return{text:'Я вижу вопрос, но пока слишком мало слов, чтобы понять тему. Добавь пару слов, и я попробую ответить.'};try{const found=await internetSearch(q);if(found)return found;return{text:'Я поискал в русской Википедии, но не нашёл подходящей статьи. Пока не хочу придумывать ответ.'}}catch(e){return{text:'Не получилось подключиться к интернет-поиску. Проверь соединение и попробуй ещё раз.'}}}
+const known=retrieveKnowledge(q);if(known)return known;if(isQuestion(q)){if(keys(q).size<2)return{text:'Я вижу вопрос, но пока слишком мало слов, чтобы понять тему. Добавь пару слов, и я попробую ответить.'};try{const found=await internetSearch(q);if(found)return found;return{text:'Я поискал в русской Википедии, но не нашёл подходящей статьи. Пока не хочу придумывать ответ.'}}catch(e){return{text:'Не получилось подключиться к интернет-поиску. Проверь соединение и попробуй ещё раз.'}}}
 const topic=w.filter(x=>x.length>2&&!STOP.has(x)).slice(-3).join(' ');return{text:topic?compose(topic)+' Расскажешь подробнее?':'Я тебя слушаю. Расскажи чуть подробнее?'};
 }
 async function submit(){const q=input.value.trim();if(!q||send.disabled)return;add(q,'user');input.value='';input.style.height='auto';send.disabled=true;typing.textContent='IVA думает и ищет информацию…';await new Promise(r=>setTimeout(r,900));const result=await reply(q);add(result.text,'iva',result.source);memory.turns.push({user:q,iva:result.text,source:result.source||null,time:Date.now()});save();typing.textContent='';send.disabled=false;input.focus()}
