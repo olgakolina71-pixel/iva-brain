@@ -50,17 +50,17 @@ async function web(q){let query=querySearch(q);if(!query)return null;const url='
 function webAnswer(docs,q){const terms=new Set(tokens(resolveTopic(q)));const picked=docs.map(d=>{let sentences=d.text.split(/(?<=[.!?])\s+/).filter(s=>s.length>35);sentences.sort((a,b)=>[...terms].filter(x=>b.toLowerCase().includes(x)).length-[...terms].filter(x=>a.toLowerCase().includes(x)).length);return{...d,summary:sentences.slice(0,3).join(' ')||d.text.slice(0,600)}});for(const d of picked)state.sources.push({q:q,title:d.title,url:d.url,summary:d.summary,time:Date.now()});state.sources=state.sources.slice(-100);return{answer:'Я нашёл справочный материал. Пока не умею полноценно переформулировать и критически проверить текст, поэтому ниже — краткая выборка:\n\n'+picked.map(d=>d.title+':\n'+d.summary).join('\n\n'),source:picked[0],trace:['Сформировал поисковый запрос: '+querySearch(q),'Получил результаты, сравнил заголовки с запросом.','Выбрал подходящие статьи и извлёк совпадающие предложения.','Это справочная выдача; проверка достоверности пока ограничена.']}}
 function classifyIntent(q){
 const n=normalize(q);
-if(/^(привет|здравствуй|здравствуйте|хай|ку|доброе утро|добрый день|добрый вечер)\\b/.test(n))return'гreeting';
-if(/^(окак|ого|ух ты|вау|лол|ахах|хаха|пхах|ясно|понятно|эм|хмм|мда)\\b/.test(n))return'reaction';
-if(/^(спасибо|спс|благодарю)\\b/.test(n))return'thanks';
-if(/^(пока|до свидания|увидимся)\\b/.test(n))return'farewell';
-if(/[?？]$/.test(q.trim())||/^(что|кто|где|когда|почему|зачем|сколько|как|можно ли|правда ли|это ли|разве)\\b/.test(n))return'question';
-if(/^\\/teach\\s+/i.test(q))return'teach';
+if(/^(привет|здравствуй|здравствуйте|хай|ку|доброе утро|добрый день|добрый вечер)\b/.test(n))return'гreeting';
+if(/^(окак|ого|ух ты|вау|лол|ахах|хаха|пхах|ясно|понятно|эм|хмм|мда)\b/.test(n))return'reaction';
+if(/^(спасибо|спс|благодарю)\b/.test(n))return'thanks';
+if(/^(пока|до свидания|увидимся)\b/.test(n))return'farewell';
+if(/[?？]$/.test(q.trim())||/^(что|кто|где|когда|почему|зачем|сколько|как|можно ли|правда ли|это ли|разве)\b/.test(n))return'question';
+if(/^\\/teach\s+/i.test(q))return'teach';
 if(parseFact(q))return'assertion';
 return'conversation';
 }
 function answerFactQuestion(q){
-const m=normalize(q).match(/^(.+?)\\s+(?:это|является)\\s+(.+)$/);
+const m=normalize(q).match(/^(.+?)\s+(?:это|является)\s+(.+)$/);
 if(!m)return null;
 const subject=m[1].trim(),object=m[2].replace(/\\?$/,'').trim();
 const found=state.facts.filter(f=>similarity(subject,f.subject)>.58&&f.relation==='это');
