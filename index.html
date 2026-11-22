@@ -34,13 +34,13 @@ async function internetSearch(q){const query=searchQuery(q);if(!query)return nul
 async function reply(q){const s=q.toLowerCase(),w=words(s);
 if(w.some(x=>['привет','здравствуй','хай','ку'].includes(x)))return{text:'Привет! Как настроение? О чём хочешь поговорить?'};
 if(/кто ты|как тебя зовут|что ты такое/.test(s))return{text:'Я IVA — экспериментальная программа с собственной памятью, поиском информации и простым механизмом обучения на примерах. Я пока не большая языковая нейросеть.'};
-if(/как дела|как ты/.test(s))return{text:'Я на связи и готова продолжать разговор. А у тебя как?'};
+if(/как дела|как ты/.test(s))return{text:'Я на связи и готов продолжать разговор. А у тебя как?'};
 if(w.some(x=>['спасибо','спс','благодарю'].includes(x)))return{text:'Пожалуйста! Что ещё обсудим?'};
 if(w.some(x=>['пока','увидимся'].includes(x)))return{text:'Пока! До следующего разговора!'};
 const learned=retrieve(q);if(learned)return learned;
 const known=retrieveKnowledge(q);if(known)return known;
-if(isQuestion(q)){try{const found=await internetSearch(q);if(found)return found;return{text:'Я поискала в русской Википедии, но не нашла подходящей статьи. Пока не хочу придумывать ответ.'}}catch(e){return{text:'Не получилось подключиться к интернет-поиску. Проверь соединение и попробуй ещё раз.'}}}
-const topic=w.find(x=>x.length>4);return{text:topic?'Ты заговорил(а) о «'+topic+'». Расскажешь подробнее?':'Я тебя слушаю. Расскажи чуть подробнее?'};
+if(isQuestion(q)){try{const found=await internetSearch(q);if(found)return found;return{text:'Я поискал в русской Википедии, но не нашёл подходящей статьи. Пока не хочу придумывать ответ.'}}catch(e){return{text:'Не получилось подключиться к интернет-поиску. Проверь соединение и попробуй ещё раз.'}}}
+const topic=w.find(x=>x.length>4);return{text:topic?'Ты заговорил о «'+topic+'». Расскажешь подробнее?':'Я тебя слушаю. Расскажи чуть подробнее?'};
 }
 async function submit(){const q=input.value.trim();if(!q||send.disabled)return;add(q,'user');input.value='';input.style.height='auto';send.disabled=true;typing.textContent='IVA думает и ищет информацию…';await new Promise(r=>setTimeout(r,900));const result=await reply(q);add(result.text,'iva',result.source);memory.turns.push({user:q,iva:result.text,source:result.source||null,time:Date.now()});save();typing.textContent='';send.disabled=false;input.focus()}
 $('#form').addEventListener('submit',e=>{e.preventDefault();submit()});input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit()}});input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,130)+'px'});
