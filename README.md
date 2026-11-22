@@ -1,24 +1,38 @@
 # IVA Brain
 
-An experimental cognitive architecture for IVA that learns from interaction and experience—not from datasets, SFT, or LoRA.
+IVA Brain is an experimental project exploring learning from its own interaction—not from datasets, SFT, or LoRA. It is **not** a finished AI or evidence of consciousness.
 
-## v0.1 goals
-- Persistent SQLite memory and experience log
-- Working state: energy, fatigue, interest, curiosity, laziness
-- Decision policy influenced by internal state
-- Sleep/wake cycle and memory consolidation
-- Internal clock (configurable; default 1 real hour = 1 IVA day)
-- CLI for observing and interacting with the system
+## Current status
+The repository contains an early behavior simulator/prototype and three focused ML experiments. The prototype's hand-written internal-state rules are not the intelligence core; the experiments test learning mechanisms separately.
 
-> These are simulated cognitive/emotional variables. They are not evidence of consciousness or real feelings.
+## Experiments
+1. **Experiment 01 — Online world model:** learn a tiny sandbox's transitions from self-generated experience.
+2. **Experiment 02 — Model-based planning:** use the learned predictor to plan toward an externally supplied goal.
+3. **Experiment 03 — Intrinsic goals:** select goals from novelty/uncertainty heuristics and attempt them using the learned model.
 
-## Run
-Requires Python 3.10+.
+These are narrow experiments. The current “curiosity” mechanism is an explicit heuristic, not a human-like feeling or a general autonomous mind.
+
+## Run experiments
+Python 3.10+ and PyTorch are required.
 
 ```bash
-python main.py
+pip install -r requirements-experiment01.txt
+python -m experiments.experiment_01
+python -m experiments.experiment_02
+python -m experiments.experiment_03
 ```
 
-Commands: `status`, `event <text>`, `feedback <last-action> <good|bad|neutral>`, `sleep`, `wake`, `quit`.
+Each experiment writes a checkpoint in the working directory. Experiments 02 and 03 depend on Experiment 01's shared code.
 
-No dataset is loaded. All changes come from runtime events and feedback.
+## Project constraints
+- No external training dataset for IVA Brain.
+- Learn from generated observations, actions, outcomes, and feedback.
+- IVA Nano is a separate project.
+- Do not claim consciousness or human-like feelings.
+- Windows control, video perception, ESP32, and robotics are future integrations, not implemented.
+
+## Next research questions
+- Can online learning generalize to changed maps and dynamics?
+- Can planning improve task success over random/heuristic baselines?
+- Can intrinsic-goal selection be evaluated without tuning to one environment?
+- How should experience and checkpoints persist across restarts?
