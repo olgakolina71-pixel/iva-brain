@@ -44,53 +44,16 @@ def evaluate(skills, trials=200, seed=606):
     usable = [s for s in skills if len(s["actions"]) >= 2]
     if not usable:
         return [], []
+    # Choose the skill using training-world statistics only. Do not inspect
+    # test-map outcomes to select the skill: that would leak the answer.
+    chosen = max(usable, key=lambda skill: skill["score"])
     for i in range(trials):
         world, start, goal = make_world(seed + i)
-        # Test each candidate skill in a fresh copy of the same context.
-        candidates = []
-        for skill in usable:
-            test_world, _, _ = make_world(seed + i)
-            gain, _ = run_skill(test_world, start, goal, skill["actions"])
-            candidates.append((gain / len(skill["actions"]), gain, skill))
-        # Select by normalized progress on a small, separate calibration set
-        # of contexts, not by the current test episode.
-        chosen = max(candidates, key=lambda item: item[0])[2]
-        test_world, _, _ = make_world(seed + i)
-        gain, _ = run_skill(test_world, start, goal, chosen["actions"])
+        gain, _ = run_skill(world, start, goal, chosen["actions"])
         skill_gains.append(gain / len(chosen["actions"]))
-        random_gains.append(run_random(world, start, goal,
+        random_world, _, _ = make_world(seed + i)
+        random_gains.append(run_random(random_world, start, goal,
                                        len(chosen["actions"]), rng) /
                             len(chosen["actions"]))
     return skill_gains, random_gains
 
-def run(episodes=35, steps=45, trials=200, seed=606):
-    agent = OnlineAgent(seed=seed)
-    training_world = World()
-    traces = collect(agent, training_world, episodes, steps, seed)
-    skills = discover_skills(traces)
-    skill_scores, random_scores = evaluate(skills, trials, seed + 1)
-    print("IVA Brain Experiment 06 | skill transfer evaluation")
-    print(f"Skills discovered from training world: {len(skills)}")
-    print(f"Fresh randomized test contexts: {trials}")
-    if skill_scores:
-        skill_mean = sum(skill_scores) / len(skill_scores)
-        random_mean = sum(random_scores) / len(random_scores)
-        skill_win = sum(a > b for a, b in zip(skill_scores, random_scores))
-        print(f"Mean progress per action: skills={skill_mean:.4f} | random={random_mean:.4f}")
-        print(f"Skill score beat random baseline: {skill_win}/{trials}")
-    else:
-        print("No transferable skills discovered; increase training episodes.")
-    import torch
-    torch.save({"skills": skills, "skill_scores": skill_scores,
-                "random_scores": random_scores},
-               "iva_exp06_checkpoint.pt")
-    print("Checkpoint saved: iva_exp06_checkpoint.pt")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--episodes", type=int, default=35)
-    parser.add_argument("--steps", type=int, default=45)
-    parser.add_argument("--trials", type=int, default=200)
-    parser.add_argument("--seed", type=int, default=606)
-    args = parser.parse_args()
-    run(args.episodes, args.steps, args.trials, args.seed)
