@@ -2,7 +2,7 @@
 
 IVA Brain is an experimental project exploring learning from its own interaction—not from external training datasets, SFT, or LoRA. It is **not** a finished AI or evidence of consciousness.
 
-## Text conversation
+## IVA Language v0.4 — conversation learning
 
 Run with Python 3.10+:
 
@@ -10,27 +10,23 @@ Run with Python 3.10+:
 python iva_chat.py
 ```
 
-IVA Language v0.3 includes:
-- simple Russian text dialogue;
-- explicit local teaching with `/teach your example`;
-- a small word-transition generator with `/generate`;
-- a symbolic fact memory for a few patterns, such as `робот это машина`, `IVA изучает язык`, or `IVA помогает человеку`;
-- answers to limited questions such as `что такое робот?`, `что изучает iva?`, and `кто изучает язык?`;
-- `/facts` to inspect learned relations, `/memory` for counts, and `/reset` to clear local memory.
+IVA now has three small learning mechanisms:
+- **Facts:** `/teach робот это машина` stores a simple subject-relation-object fact.
+- **Word patterns:** `/generate` recombines word transitions from taught examples.
+- **Dialogue retrieval:** `/learn привет || Привет! Как настроение?` stores a question/answer pair. Later, IVA can reuse that answer when a new message has enough keyword overlap with the learned question.
 
-Example lesson sequence:
+Other commands: `/facts`, `/memory`, `/reset`, `/help`, `/exit`.
+
+Example:
 
 ```text
-/teach робот это машина
-/teach IVA изучает язык
-/teach IVA помогает человеку
-что такое робот?
-что изучает iva?
-кто изучает язык?
-/facts
+/learn привет || Привет! Как настроение?
+/learn что ты любишь || Я люблю изучать новые вещи.
+/learn расскажи про роботов || Роботы — это машины, которые могут выполнять задачи.
+/memory
 ```
 
-The fact layer extracts only a few explicit sentence patterns. It does not infer facts, understand arbitrary language, or know whether a taught statement is true. The word-transition generator can produce nonsense. This is a small symbolic experiment, not a neural language model. All examples and facts are stored in local plain-text `iva_memory.json`; keep private information out of it.
+This is example-based retrieval, not neural training: IVA compares keywords and reuses a stored answer. It does not reliably understand paraphrases, verify truth, or generalize like a language model. Its ordinary chat history is logged, but is not automatically treated as correct training data. Teach it only examples you want it to learn; local memory is plain-text JSON, so do not store private information there.
 
 ## World-model experiments
 
