@@ -25,6 +25,7 @@ jobs:
           python -m experiments.experiment_03
           python -m experiments.experiment_04
           python -m experiments.experiment_05
+          python -m experiments.experiment_06
       - name: Upload checkpoints
         uses: actions/upload-artifact@v4
         with:
