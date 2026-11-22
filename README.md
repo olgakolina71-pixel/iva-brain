@@ -2,7 +2,7 @@
 
 IVA Brain is an experimental project exploring learning from its own interaction—not from external training datasets, SFT, or LoRA. It is **not** a finished AI or evidence of consciousness.
 
-## Text conversation and tiny language experiment
+## Text conversation
 
 Run with Python 3.10+:
 
@@ -10,14 +10,27 @@ Run with Python 3.10+:
 python iva_chat.py
 ```
 
-IVA Language v0.2 includes:
-- a simple Russian text dialogue;
-- explicit local teaching with `/teach your example sentence`;
-- a tiny word-transition generator with `/generate`;
-- local persistence in `iva_memory.json`;
-- `/memory` to inspect counts and `/reset` to clear the local history and examples.
+IVA Language v0.3 includes:
+- simple Russian text dialogue;
+- explicit local teaching with `/teach your example`;
+- a small word-transition generator with `/generate`;
+- a symbolic fact memory for a few patterns, such as `робот это машина`, `IVA изучает язык`, or `IVA помогает человеку`;
+- answers to limited questions such as `что такое робот?`, `что изучает iva?`, and `кто изучает язык?`;
+- `/facts` to inspect learned relations, `/memory` for counts, and `/reset` to clear local memory.
 
-The generator learns only from examples explicitly supplied with `/teach`. It memorizes word-to-word transitions and recombines them; it does **not** learn grammar, meaning, facts, or human-like understanding. Generated text can be nonsensical. This is a small experiment for testing how language patterns can be learned from interaction, not a substitute for a neural language model. Keep private information out of teaching examples; the local JSON file is plain text.
+Example lesson sequence:
+
+```text
+/teach робот это машина
+/teach IVA изучает язык
+/teach IVA помогает человеку
+что такое робот?
+что изучает iva?
+кто изучает язык?
+/facts
+```
+
+The fact layer extracts only a few explicit sentence patterns. It does not infer facts, understand arbitrary language, or know whether a taught statement is true. The word-transition generator can produce nonsense. This is a small symbolic experiment, not a neural language model. All examples and facts are stored in local plain-text `iva_memory.json`; keep private information out of it.
 
 ## World-model experiments
 
