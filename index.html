@@ -28,12 +28,16 @@ function keys(s){return new Set(words(s).filter(w=>!STOP.has(w)&&w.length>1))}
 function score(a,b){let n=0;for(const x of a)if(b.has(x))n++;return n/(a.size+b.size-n||1)}
 function retrieve(q){const a=keys(q);if(!a.size)return null;let best=0,answer=null;for(const pair of memory.turns){const b=keys(pair.user||'');const v=score(a,b);if(v>best){best=v;answer=pair.iva}}return best>=.48?{text:answer}:null}
 function retrieveKnowledge(q){const a=keys(q);let best=0,found=null;for(const item of memory.knowledge){const b=keys(item.query||'');const v=score(a,b);if(v>best){best=v;found=item}}return best>=.58&&found?{text:found.text,source:found.source}:null}
-function isQuestion(q){return/[?？]/.test(q)||/^(что|кто|где|когда|почему|зачем|сколько|как|найди|поищи|расскажи|объясни)\b/i.test(q.trim())}
-function searchQuery(q){return q.replace(/^(найди|поищи|расскажи|объясни)\s+/i,'').replace(/[?？]+$/,'').trim()}
+function isQuestion(q){const t=q.trim();return/[?？]/.test(t)||/^(что|кто|где|когда|почему|зачем|сколько|как|какой|какая|какие|найди|поищи|расскажи|объясни|это)\b/i.test(t)}
+function searchQuery(q){return q.trim().replace(/^(найди|поищи|расскажи|объясни)\s+/i,'').replace(/^(что такое|кто такой|кто такая|кто такие|где находится|когда произошло|какой|какая|какие)\s+/i,'').replace(/[?？]+$/,'').trim()}
 async function internetSearch(q){const query=searchQuery(q);if(!query)return null;const endpoint='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=1&format=json&origin=*';const res=await fetch(endpoint,{headers:{Accept:'application/json'}});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const hit=data.query?.search?.[0];if(!hit)return null;const pageRes=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=1500&pageids='+hit.pageid+'&format=json&origin=*',{headers:{Accept:'application/json'}});if(!pageRes.ok)throw new Error('HTTP '+pageRes.status);const pageData=await pageRes.json();const page=pageData.query?.pages?.[hit.pageid];if(!page?.extract)return null;const item={query,text:page.extract.slice(0,1500),source:{title:page.title,url:'https://ru.wikipedia.org/?curid='+hit.pageid},time:Date.now()};memory.knowledge.push(item);save();return{text:item.text,source:item.source}}
 async function reply(q){const s=q.toLowerCase(),w=words(s);
 if(w.some(x=>['привет','здравствуй','хай','ку'].includes(x)))return{text:'Привет! Как настроение? О чём хочешь поговорить?'};
 if(/кто ты|как тебя зовут|что ты такое/.test(s))return{text:'Я IVA — экспериментальная программа с собственной памятью, поиском информации и простым механизмом обучения на примерах. Я пока не большая языковая нейросеть.'};
+if(/^ива[.!?？]*$/i.test(q.trim()))return{text:'Я здесь! 🙂'};
+if(/^вопрос[.!?？]*$/i.test(q.trim()))return{text:'Какой вопрос? Спрашивай, я попробую разобраться.'};
+if(/^какой[.!?？]*$/i.test(q.trim())){const prev=memory.turns.slice(-2).map(t=>t.user).join(' ');return{text:prev.includes('вопрос')?'Ты написал «Вопрос» — какой именно вопрос хочешь задать? Уточни, пожалуйста.':'Можешь уточнить, о чём именно спрашиваешь?'}}
+if(/^это\s+(заготовка|шаблон|скрипт)[.!?？]*$/i.test(q.trim()))return{text:'Да, пока часть моих ответов основана на правилах и шаблонах, а поиск — на Википедии. Я ещё не умею свободно генерировать речь как обученная языковая модель.'};
 if(/как дела|как ты/.test(s))return{text:'Я на связи и готов продолжать разговор. А у тебя как?'};
 if(w.some(x=>['спасибо','спс','благодарю'].includes(x)))return{text:'Пожалуйста! Что ещё обсудим?'};
 if(w.some(x=>['пока','увидимся'].includes(x)))return{text:'Пока! До следующего разговора!'};
