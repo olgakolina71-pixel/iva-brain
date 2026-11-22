@@ -3,7 +3,22 @@
 IVA Brain is an experimental project exploring learning from its own interaction—not from datasets, SFT, or LoRA. It is **not** a finished AI or evidence of consciousness.
 
 ## Current status
-The repository contains a small online world-model prototype and five focused experiments. These test separate learning mechanisms; they do not yet constitute a general-purpose intelligence.
+The repository contains a small online world-model prototype, six focused experiments, and a starter text conversation module. These are separate mechanisms; they do not yet constitute a general-purpose intelligence.
+
+## Text conversation (new)
+Run with Python 3.10+:
+
+```bash
+python iva_chat.py
+```
+
+IVA Language v0.1 can:
+- receive text and respond in Russian;
+- recognize a few basic conversational intents;
+- retain the last 20 message pairs in a local `iva_memory.json` file;
+- show and clear its local conversation memory with `/memory` and `/reset`.
+
+**Important:** this first version is a transparent rule-based prototype, not a neural language model. It does not yet freely understand or generate arbitrary text. The memory file is stored in the folder where the program is run; do not put private information into it.
 
 ## Experiments
 1. **Experiment 01 — Online world model:** learn a tiny sandbox's transitions from self-generated experience.
