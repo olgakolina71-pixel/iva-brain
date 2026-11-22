@@ -48,6 +48,27 @@ function shouldSearch(q){return/[?？]/.test(q)||/^(что|кто|где|ког�
 function querySearch(q){let t=resolveTopic(q).replace(/[?？]/g,'').trim();let age=t.match(/сколько\s+лет\s+(.+)/i);if(age)return age[1].replace(/;.*$/,'').trim()+' возраст';return t.replace(/^(что такое|кто такой|кто такая|кто такие|почему|зачем|сколько|где|когда|расскажи|объясни|найди|поищи)\s+/i,'').trim()}
 async function web(q){let query=querySearch(q);if(!query)return null;const url='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=4&format=json&origin=*';const r=await fetch(url);if(!r.ok)throw Error('Search unavailable');const hits=(await r.json()).query?.search||[];const ranked=hits.map(h=>({h,s:similarity(query,h.title)*3+[...new Set(tokens(query))].filter(w=>h.snippet.toLowerCase().includes(w)).length*.5})).sort((a,b)=>b.s-a.s).filter(x=>x.s>.12).slice(0,2);if(!ranked.length)return null;const docs=await Promise.all(ranked.map(async x=>{const rr=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=900&pageids='+x.h.pageid+'&format=json&origin=*');if(!rr.ok)return null;const p=(await rr.json()).query?.pages?.[x.h.pageid];return p?.extract?{title:p.title,text:p.extract,url:'https://ru.wikipedia.org/?curid='+x.h.pageid}:null}));return docs.filter(Boolean)}
 function webAnswer(docs,q){const terms=new Set(tokens(resolveTopic(q)));const picked=docs.map(d=>{let sentences=d.text.split(/(?<=[.!?])\s+/).filter(s=>s.length>35);sentences.sort((a,b)=>[...terms].filter(x=>b.toLowerCase().includes(x)).length-[...terms].filter(x=>a.toLowerCase().includes(x)).length);return{...d,summary:sentences.slice(0,3).join(' ')||d.text.slice(0,600)}});for(const d of picked)state.sources.push({q:q,title:d.title,url:d.url,summary:d.summary,time:Date.now()});state.sources=state.sources.slice(-100);return{answer:'Я нашёл справочный материал. Пока не умею полноценно переформулировать и критически проверить текст, поэтому ниже — краткая выборка:\n\n'+picked.map(d=>d.title+':\n'+d.summary).join('\n\n'),source:picked[0],trace:['Сформировал поисковый запрос: '+querySearch(q),'Получил результаты, сравнил заголовки с запросом.','Выбрал подходящие статьи и извлёк совпадающие предложения.','Это справочная выдача; проверка достоверности пока ограничена.']}}
+function classifyIntent(q){
+const n=normalize(q);
+if(/^(привет|здравствуй|здравствуйте|хай|ку|доброе утро|добрый день|добрый вечер)\\b/.test(n))return'гreeting';
+if(/^(окак|ого|ух ты|вау|лол|ахах|хаха|пхах|ясно|понятно|эм|хмм|мда)\\b/.test(n))return'reaction';
+if(/^(спасибо|спс|благодарю)\\b/.test(n))return'thanks';
+if(/^(пока|до свидания|увидимся)\\b/.test(n))return'farewell';
+if(/[?？]$/.test(q.trim())||/^(что|кто|где|когда|почему|зачем|сколько|как|можно ли|правда ли|это ли|разве)\\b/.test(n))return'question';
+if(/^\\/teach\\s+/i.test(q))return'teach';
+if(parseFact(q))return'assertion';
+return'conversation';
+}
+function answerFactQuestion(q){
+const m=normalize(q).match(/^(.+?)\\s+(?:это|является)\\s+(.+)$/);
+if(!m)return null;
+const subject=m[1].trim(),object=m[2].replace(/\\?$/,'').trim();
+const found=state.facts.filter(f=>similarity(subject,f.subject)>.58&&f.relation==='это');
+if(found.some(f=>similarity(object,f.object)>.55))return{answer:'Да. В моей памяти записано: '+found.find(f=>similarity(object,f.object)>.55).subject+' — это — '+object+'.',trace:['Распознал вопрос-проверку утверждения.','Сопоставил с существующей связью в графе.'],used:found};
+if(found.length)return{answer:'Не могу подтвердить. В памяти есть другое описание: '+found.map(f=>f.object).join(', ')+'. Могу поискать источник.',trace:['Распознал вопрос, не записывал его как факт.','Нашёл возможное противоречие в памяти.'],used:found};
+return{answer:'Я пока не знаю, верно ли это. Я распознал вопрос и не записал его как факт. Можешь обучить меня через /teach или разрешить мне поискать источник.',trace:['Определил тип сообщения: вопрос.','Не превращал вопрос в утверждение и не записывал его в память.']};
+}
+}
 function reply(q){const clean=q.trim();if(!clean)return null;let trace=['Принял сообщение.'];if(/^\/teach\s+/i.test(clean)){const f=parseFact(clean.replace(/^\/teach\s+/i,''));if(f&&addFact(f,'explicit teaching'))return{answer:'Факт добавлен в мою память: '+f.subject+' — '+f.relation+' — '+f.object+'.',trace:['Распознал субъект, отношение и объект.','Сохранил факт с пометкой явного обучения.']};return{answer:'Не смог разобрать факт. Попробуй «/teach объект это описание» или «/teach объект умеет действие».',trace:[]}}
 if(/^\/forget\s+/i.test(clean)){let term=normalize(clean.replace(/^\/forget\s+/i,''));const before=state.facts.length;state.facts=state.facts.filter(f=>!f.subject.includes(term)&&!f.object.includes(term));save();return{answer:'Удалил '+(before-state.facts.length)+' фактов, связанных с «'+term+'».',trace:['Удаление из локального графа памяти.']}}
 if(/^(привет|здравствуй|хай|ку)\b/i.test(clean))return{answer:'Привет. Что исследуем?',trace:['Распознал приветствие.']};
