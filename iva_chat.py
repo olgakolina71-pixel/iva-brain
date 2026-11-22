@@ -16,10 +16,11 @@ def main() -> None:
             break
         if message == "/help":
             print("Команды:")
-            print("/teach ТЕКСТ — явно обучить меня примеру")
-            print("/generate — собрать новую фразу из выученных связей слов")
+            print("/teach ТЕКСТ — обучить меня примеру или простому факту")
+            print("/generate — собрать фразу из выученных связей слов")
+            print("/facts — показать сохранённые понятия и связи")
             print("/memory — показать объём локальной памяти")
-            print("/reset — удалить историю и обучающие примеры")
+            print("/reset — удалить историю, примеры и факты")
             print("/exit — выход")
             continue
         if message.startswith("/teach "):
@@ -29,12 +30,20 @@ def main() -> None:
         if message == "/generate":
             print("IVA:", iva.generate())
             continue
+        if message == "/facts":
+            facts = iva.memory.get("facts", [])
+            if not facts:
+                print("IVA: Пока нет фактов. Попробуй /teach робот это машина.")
+            else:
+                for fact in facts:
+                    print(f"• {fact['subject']} — {fact['relation']} — {fact['object']}")
+            continue
         if message == "/memory":
-            print(f"IVA: Диалоговых реплик: {len(iva.memory.get('turns', []))}; обучающих примеров: {len(iva.memory.get('examples', []))}.")
+            print(f"IVA: Реплик: {len(iva.memory.get('turns', []))}; примеров: {len(iva.memory.get('examples', []))}; фактов: {len(iva.memory.get('facts', []))}.")
             continue
         if message == "/reset":
             iva.reset_memory()
-            print("IVA: История и обучающие примеры удалены.")
+            print("IVA: История, примеры и факты удалены.")
             continue
         print("IVA:", iva.reply(message))
 
