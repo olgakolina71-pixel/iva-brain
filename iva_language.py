@@ -105,7 +105,10 @@ class IVaLanguage:
         if not query:
             return None
         best_score, best_answer = 0.0, None
-        for pair in self.memory.get("dialogues", []):
+        # Reuse both explicitly saved examples and ordinary past chat turns.
+        # This is automatic example retrieval, not neural-network training.
+        past_pairs = list(self.memory.get("dialogues", [])) + list(self.memory.get("turns", []))
+        for pair in past_pairs:
             candidate = self._keywords(pair.get("user", ""))
             if not candidate:
                 continue
