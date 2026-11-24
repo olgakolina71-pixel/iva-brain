@@ -45,93 +45,27 @@ const m2=n.match(/(?:докажи|почему)\s+(.+?)\s+(?:это|являет
 return null}
 function numberReason(q){const m=normalize(q).match(/(?:что такое|разбери|расскажи про)\s+(\d+)/);if(!m)return null;let n=Number(m[1]);return'Число '+n+': '+(Number.isInteger(n)?'целое':'нецелое')+', '+(n%2===0?'чётное':'нечётное')+'. '+(n>1?('Делители, которые я проверил: '+Array.from({length:Math.min(n,30)},(_,i)=>i+1).filter(x=>n%x===0).join(', ')+'.'):'')}
 function shouldSearch(q){return/[?？]/.test(q)||/^(что|кто|где|когда|почему|зачем|сколько|как|найди|поищи|расскажи|объясни)\b/i.test(q)||/актуальн|сегодня|сейчас|новост|возраст|дата|последн/i.test(q)}
-function querySearch(q){let t=resolveTopic(q).replace(/[?？]/g,'').trim();let age=t.match(/сколько\s+лет\s+(.+)/i);if(age)return age[1].replace(/;.*$/,'').trim()+' возраст';return t.replace(/^(что такое|кто такой|кто такая|кто такие|почему|зачем|сколько|где|когда|расскажи|объясни|найди|поищи)\s+/i,'').trim()}
-async function web(q){let query=querySearch(q);if(!query)return null;const url='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=4&format=json&origin=*';const r=await fetch(url);if(!r.ok)throw Error('Search unavailable');const hits=(await r.json()).query?.search||[];const ranked=hits.map(h=>({h,s:similarity(query,h.title)*3+[...new Set(tokens(query))].filter(w=>h.snippet.toLowerCase().includes(w)).length*.5})).sort((a,b)=>b.s-a.s).filter(x=>x.s>.12).slice(0,2);if(!ranked.length)return null;const docs=await Promise.all(ranked.map(async x=>{const rr=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=900&pageids='+x.h.pageid+'&format=json&origin=*');if(!rr.ok)return null;const p=(await rr.json()).query?.pages?.[x.h.pageid];return p?.extract?{title:p.title,text:p.extract,url:'https://ru.wikipedia.org/?curid='+x.h.pageid}:null}));return docs.filter(Boolean)}
-function extractSourceFacts(doc){
- const out=[],title=doc.title;
- const clean=x=>x.replace(/^[-—–,:;\\s]+|[-—–,:;\\s]+$/g,'').trim();
- const sentences=doc.text.split(/(?<=[.!?])\\s+/);
- for(let sentence of sentences){
-  sentence=sentence.replace(/\\([^)]{0,120}\\)/g,'').trim();
-  if(sentence.length<25||sentence.length>420)continue;
-  let m=sentence.match(/^(.{2,100}?)\\s+(?:является|представляет собой)\\s+(.{2,120})$/i);
-  if(!m)m=sentence.match(/^(.{2,100}?)\\s+[—–-]\\s+(.{2,120})$/);
-  if(!m)m=sentence.match(/^(.{2,100}?)\\s+(?:это|— это)\\s+(.{2,120})$/i);
-  if(m){let subject=clean(m[1]),object=clean(m[2]).replace(/[.!?]+$/,'');if(subject&&object&&subject.split(' ').length<=10&&object.split(' ').length<=15)out.push({subject,relation:'это',object,origin:'Wikipedia source',confidence:.62,source:doc.url,time:Date.now()})}
- }
- // Add article-title → likely subject identity link only when source explicitly describes it.
- if(out.length&&similarity(title,out[0].subject)<.35)out.unshift({subject:title.toLowerCase(),relation:'описан как',object:out[0].object,origin:'Wikipedia source',confidence:.5,source:doc.url,time:Date.now()});
- return out;
-}
-function learnFromSources(docs){
- let added=0,derived=0;
- for(const d of docs){
-  const extracted=extractSourceFacts(d);
-  for(const f of extracted){if(!state.facts.some(x=>x.subject===f.subject&&x.relation===f.relation&&x.object===f.object)){state.facts.push(f);added++}}
- }
- // Bounded category-chain inference: if A is B and B is C, tentatively derive A is C.
- const base=state.facts.filter(f=>f.relation==='это'&&f.confidence>=.55).slice(-500);
- for(const a of base){for(const b of base){if(a===b||similarity(a.object,b.subject)<.72||similarity(a.subject,b.object)>.75)continue;
-  const candidate={subject:a.subject,relation:'это',object:b.object,origin:'derived inference',confidence:Math.min(a.confidence||.5,b.confidence||.5)*.72,source:(a.source||'')+' '+(b.source||''),time:Date.now(),derivedFrom:[a.subject+' → '+a.object,a.subject+' → '+b.object]};
-  if(candidate.confidence>=.35&&!state.facts.some(x=>x.subject===candidate.subject&&x.relation===candidate.relation&&x.object===candidate.object)){state.facts.push(candidate);derived++}
- }}
- state.facts=state.facts.slice(-1200);return{added,derived};
-}
-function webAnswer(docs,q){
- const terms=new Set(tokens(resolveTopic(q)));
- const picked=docs.map(d=>{let sentences=d.text.split(/(?<=[.!?])\\s+/).filter(s=>s.length>35);sentences.sort((a,b)=>[...terms].filter(x=>b.toLowerCase().includes(x)).length-[...terms].filter(x=>a.toLowerCase().includes(x)).length);return{...d,summary:sentences.slice(0,3).join(' ')||d.text.slice(0,600)}});
- for(const d of picked)state.sources.push({q,title:d.title,url:d.url,summary:d.summary,time:Date.now()});
- const learning=learnFromSources(picked);state.sources=state.sources.slice(-100);save();
- return{answer:'Нашёл материал и обработал его.\\n\\n'+picked.map(d=>d.title+':\\n'+d.summary).join('\\n\\n')+'\\n\\nОбучение памяти: '+learning.added+' новых извлечённых связей; '+learning.derived+' предварительных обобщений.',source:picked[0],trace:['Сформировал поисковый запрос: '+querySearch(q),'Сопоставил найденные статьи с вопросом.','Извлёк предложения по шаблонам определений.','Сохранил факты с URL источника и уровнем уверенности.','Проверил граф на простые цепочки категорий; выводы помечены как предварительные.']};
-}
-function classifyIntent(q){
-const n=normalize(q);
-if(/^(привет|здравствуй|здравствуйте|хай|ку|доброе утро|добрый день|добрый вечер)(?:\s|$)/.test(n))return'гreeting';
-if(/^(окак|ого|ух ты|вау|лол|ахах|хаха|пхах|ясно|понятно|эм|хмм|мда)(?:\s|$)/.test(n))return'reaction';
-if(/^(спасибо|спс|благодарю)(?:\s|$)/.test(n))return'thanks';
-if(/^(пока|до свидания|увидимся)(?:\s|$)/.test(n))return'farewell';
-if(/[?？]$/.test(q.trim())||/^(что|кто|где|когда|почему|зачем|сколько|как|можно ли|правда ли|это ли|разве)(?:\s|$)/.test(n))return'question';
-if(/^\/teach\s+/i.test(q))return'teach';
-if(parseFact(q))return'assertion';
-return'conversation';
-}
-function answerFactQuestion(q){
-const m=normalize(q).match(/^(.+?)\s+(?:это|является)\s+(.+)$/);
-if(!m)return null;
-const subject=m[1].trim(),object=m[2].replace(/\\?$/,'').trim();
-const found=state.facts.filter(f=>similarity(subject,f.subject)>.58&&f.relation==='это');
-if(found.some(f=>similarity(object,f.object)>.55))return{answer:'Да. В моей памяти записано: '+found.find(f=>similarity(object,f.object)>.55).subject+' — это — '+object+'.',trace:['Распознал вопрос-проверку утверждения.','Сопоставил с существующей связью в графе.'],used:found};
-if(found.length)return{answer:'Не могу подтвердить. В памяти есть другое описание: '+found.map(f=>f.object).join(', ')+'. Могу поискать источник.',trace:['Распознал вопрос, не записывал его как факт.','Нашёл возможное противоречие в памяти.'],used:found};
-return null;
-}
-function localKnowledge(q){
- const n=normalize(q);
- if(/^(?:кто такой|кто такая|что такое|кто такие)\\s+кит(?:ы)?$/.test(n))return{answer:'Кит — крупное морское млекопитающее. Он дышит воздухом лёгкими, кормит детёнышей молоком и живёт в океане. Некоторые виды китов питаются крилем и мелкими организмами, другие — рыбой или кальмарами.',trace:['Распознал базовый справочный вопрос.','Использовал встроенную базовую справку; веб-поиск не обязателен.']};
- if(/^(?:что ты умеешь|что умеешь|твои возможности|какие у тебя возможности)$/.test(n))return{answer:'Пока я умею: искать справочную информацию в Wikipedia, сохранять найденные сведения в локальную память, выделять простые факты, связывать понятия в граф, делать ограниченные выводы по связям, помнить контекст диалога и экспортировать/импортировать память. Я ещё не полноценная языковая нейросеть, поэтому сложные рассуждения и свободная беседа пока ограничены.',trace:['Распознал вопрос о возможностях IVA.','Сформировал ответ из реально реализованных функций.']};
- if(/^(?:привет|здравствуй|здравствуйте|хай|ку|доброе утро|добрый день|добрый вечер)(?:\\s|$)/.test(n))return{answer:'Привет! 👋 Чем займёмся?',trace:['Распознал приветствие.']};
- return null;
-}
-function reply(q){const clean=q.trim();if(!clean)return null;const local=localKnowledge(clean);if(local)return local;let trace=['Принял сообщение.'];if(/^\/teach\s+/i.test(clean)){const f=parseFact(clean.replace(/^\/teach\s+/i,''));if(f&&addFact(f,'explicit teaching'))return{answer:'Факт добавлен в мою память: '+f.subject+' — '+f.relation+' — '+f.object+'.',trace:['Распознал субъект, отношение и объект.','Сохранил факт с пометкой явного обучения.']};return{answer:'Не смог разобрать факт. Попробуй «/teach объект это описание» или «/teach объект умеет действие».',trace:[]}}
-if(/^\/forget\s+/i.test(clean)){let term=normalize(clean.replace(/^\/forget\s+/i,''));const before=state.facts.length;state.facts=state.facts.filter(f=>!f.subject.includes(term)&&!f.object.includes(term));save();return{answer:'Удалил '+(before-state.facts.length)+' фактов, связанных с «'+term+'».',trace:['Удаление из локального графа памяти.']}}
-const intent=classifyIntent(clean);if(intent==='greeting')return{answer:'Привет! Что будем делать?',trace:['Определил приветствие.']};if(intent==='reaction')return{answer:/окак/i.test(clean)?'Окак 😄':/ого|вау|ух ты/i.test(clean)?'Ого!':/лол|ахах|хаха|пхах/i.test(clean)?'😂':/ясно|понятно/i.test(clean)?'Окей, понял.':'Хм, понял реакцию.',trace:['Распознал реакцию, не запуская поиск знаний.']};if(intent==='thanks')return{answer:'Пожалуйста!',trace:['Распознал благодарность.']};if(intent==='farewell')return{answer:'Пока! 👋',trace:['Распознал прощание.']};
-if(/кто ты|что ты такое|как тебя зовут/i.test(clean))return{answer:'Я IVA — собственное экспериментальное когнитивное ядро. Сейчас мои механизмы — граф знаний, ассоциации, простые логические выводы, контекст и поиск. Я ещё не языковая нейросеть; мои способности ограничены тем, что реализовано и чему я научилась.',trace:['Запрос о системе: прочитал описание текущих механизмов.']};
-if(/память|что ты знаешь/i.test(clean)&&clean.length<35)return{answer:'В памяти '+state.facts.length+' связей, '+state.turns.length+' сообщений, '+state.sources.length+' поисковых заметок. Открой вкладку «Модель знаний».',trace:['Проверил локальные счётчики.']};
-if(intent==='question'){const check=answerFactQuestion(clean);if(check)return check;}let f=parseFact(clean);if(intent==='assertion'&&f&&!/^я\s/.test(clean.toLowerCase())){let added=addFact(f,'conversation claim');save();return{answer:(added?'Сохранил твоё утверждение в памяти как непроверенную запись: ':'Такая связь уже есть в памяти: ')+f.subject+' — '+f.relation+' — '+f.object+'.',trace:['Выделил субъект, отношение и объект.','Записал с пометкой «утверждение пользователя», не присваивая статус проверенного факта.']}}
-const inferred=infer(clean);if(inferred)return inferred;
-const logical=logic(clean);if(logical)return logical;
-const followNumber=clean.match(/^а?\s*(\d+)$/i);if(followNumber&&state.turns.slice(-3).some(x=>/что такое\s+\d+/i.test(x.user)))return{answer:numberReason('что такое '+followNumber[1]),trace:['Унаследовал контекст предыдущего вопроса о числах.','Проверил свойства числа.']};const n=numberReason(clean);if(n)return{answer:n,trace:['Проверил арифметические свойства числа.']};
-const past=state.turns.slice(-12).reverse().find(x=>similarity(clean,x.user)>.3);if(past&&similarity(clean,past.user)>.6)return{answer:'Похожий вопрос уже был. Тогда я ответил: '+past.iva,trace:['Сопоставил сообщение с недавним диалогом; нашёл похожую формулировку.']};
-return null}
-async function process(q){let r=reply(q),docs=null;if(r)return r;if(shouldSearch(q)){typing.textContent='IVA проверяет справочные источники…';try{docs=await web(q)}catch(e){console.warn(e)}if(docs&&docs.length)return webAnswer(docs,q)}const intent=classifyIntent(q);let answer=intent==='question'?'Пока не нашёл ответа. Попробую поискать по-другому, если уточнишь тему.':'Я тебя услышал. Что именно хочешь обсудить?';return{answer,trace:['Проверил память и контекст диалога.','Не стал просить пользователя обучать меня вручную.','Ответил в рамках текущих возможностей.']}}
-function addBubble(text,who,trace,source){const box=document.createElement('div');box.className='bubble '+who;const label=document.createElement('div');label.className='label';label.textContent=who==='user'?'Ты':'IVA';const p=document.createElement('div');p.textContent=text;box.append(label,p);if(source){const a=document.createElement('a');a.className='source';a.href=source.url;a.target='_blank';a.rel='noopener';a.textContent='Источник: '+source.title;box.append(a)}if(trace&&trace.length){const d=document.createElement('details');d.className='trace';const s=document.createElement('summary');s.textContent='Показать ход обработки';const content=document.createElement('div');content.textContent=trace.map((x,i)=>(i+1)+'. '+x).join('\n');d.append(s,content);box.append(d)}chat.append(box);chat.scrollTop=chat.scrollHeight}
-async function submit(){const q=input.value.trim();if(!q||send.disabled)return;addBubble(q,'user');input.value='';input.style.height='auto';send.disabled=true;typing.textContent='IVA анализирует…';try{const r=await process(q);addBubble(r.answer,'iva',r.trace,r.source);state.turns.push({user:q,iva:r.answer,time:Date.now()});state.turns=state.turns.slice(-300);state.topic=q;save()}catch(e){addBubble('Произошла ошибка: '+e.message,'iva',['Ошибка обработки']);}finally{typing.textContent='';send.disabled=false;input.focus()}}
-function refresh(){const f=$('#factCount'),t=$('#turnCount');if(f)f.textContent=state.facts.length;if(t)t.textContent=state.turns.length;$('#memStat').textContent='факты: '+state.facts.length+' · диалоги: '+state.turns.length;const list=$('#factsList');if(list)list.innerHTML=state.facts.slice(-80).reverse().map(x=>'<div class="fact"><strong>'+escapeHtml(x.subject)+'</strong> '+escapeHtml(x.relation)+' <strong>'+escapeHtml(x.object)+'</strong><div class="muted">'+escapeHtml(x.origin||'')+'</div></div>').join('')||'<div class="empty">Факты будут накапливаться из поиска и диалогов.</div>';const src=$('#sourcesList');if(src)src.innerHTML=state.sources.slice(-20).reverse().map(x=>'<div class="fact"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener">'+escapeHtml(x.title)+'</a><div class="muted">'+escapeHtml(x.q)+'</div></div>').join('')||'<div class="empty">Источники пока не сохранены.</div>'}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));if(b.dataset.tab!=='chat'){$('#form').style.display='none';$('#typing').style.display='none'}else{$('#form').style.display='flex';$('#typing').style.display='block'}refresh()});
-$('#form').addEventListener('submit',e=>{e.preventDefault();submit()});input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit()}});input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'});
-$('#teachBtn').onclick=()=>{const text=$('#teachInput').value.trim();const f=parseFact(text);if(f){addFact(f,'explicit teaching');save();$('#teachInput').value='';addBubble('Обучение принято. Сохранил связь: '+f.subject+' — '+f.relation+' — '+f.object+'.','iva',['Извлёк структуру субъект–отношение–объект.','Записал в локальную память.'])}else addBubble('Не распознал структуру. Попробуй «X это Y», «X любит Y», «X умеет Y», «X находится Y».','iva')};
-$('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='iva-brain-memory.json';a.click();URL.revokeObjectURL(a.href)};
-$('#importBtn').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());for(const k of ['facts','turns','sources','claims'])if(Array.isArray(data[k]))state[k]=data[k].slice(-1000);state.topic=data.topic||'';save();addBubble('Память импортирована.','iva')}catch{addBubble('Файл памяти не удалось прочитать.','iva')}e.target.value=''};
-$('#wipeBtn').onclick=()=>{if(confirm('Точно очистить всю локальную память IVA?')){state.facts=[];state.turns=[];state.sources=[];state.claims=[];state.topic='';save();chat.innerHTML='';addBubble('Память очищена. Начинаем с нуля.','iva')}};
-refresh();
-</script></body></html>
+function querySearch(q){
+ let t=resolveTopic(q).replace(/[?？]/g,'').trim();
+ t=t.replace(/^(?:расскажи|объясни|найди|поищи|что произошло|что было)\s+/i,'');
+ t=t.replace(/^(?:что такое|кто такой|кто такая|кто такие|почему|зачем|сколько|где|когда|как)\s+/i,'');
+ const year=t.match(/^(\d{1,4})\s*(?:год|года|году|годы)?$/i);
+ if(year)return year[1]+' год события';
+ return t.trim();
+}async function web(q){
+ const query=querySearch(q);if(!query)return null;
+ const url='https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&srlimit=8&format=json&origin=*';
+ const r=await fetch(url);if(!r.ok)throw Error('Search unavailable');
+ const hits=(await r.json()).query?.search||[];
+ const isDisambig=h=>/значения|disambiguation/i.test(h.title)||/может означать|различные значения/i.test(h.snippet);
+ const qTokens=tokens(query);
+ const ranked=hits.map(h=>{const tt=tokens(h.title),st=tokens(h.snippet);const score=qTokens.filter(x=>tt.includes(x)).length*3+qTokens.filter(x=>st.includes(x)).length*.25-(isDisambig(h)?8:0);return{h,score}}).filter(x=>!isDisambig(x.h)&&x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
+ if(!ranked.length)return null;
+ const docs=await Promise.all(ranked.map(async x=>{const rr=await fetch('https://ru.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&exchars=1800&pageids='+x.h.pageid+'&format=json&origin=*');if(!rr.ok)return null;const p=(await rr.json()).query?.pages?.[x.h.pageid];return p?.extract&&!/может означать|значения\s*:/i.test(p.extract.slice(0,250))?{title:p.title,text:p.extract,url:'https://ru.wikipedia.org/?curid='+x.h.pageid,score:x.score}:null}));
+ return docs.filter(Boolean).sort((a,b)=>b.score-a.score);
+}function webAnswer(docs,q){
+ const terms=new Set(tokens(querySearch(q)));
+ const picked=docs.map(d=>{const sentences=d.text.split(/(?<=[.!?])\s+/).filter(x=>x.length>35&&x.length<650);const ranked=sentences.map(sentence=>({sentence,score:[...terms].filter(x=>tokens(sentence).includes(x)).length})).sort((a,b)=>b.score-a.score);return {...d,summary:ranked.slice(0,5).map(x=>x.sentence).join(' ')||d.text.slice(0,900)}});
+ state.sources=state.sources.concat(picked.map(d=>({q,title:d.title,url:d.url,summary:d.summary,time:Date.now()}))).slice(-100);save();
+ return{answer:picked.map(d=>d.title+'\n'+d.summary).join('\n\n')+'\n\nНашёл '+picked.length+' подходящих страниц. Память фактов не изменялась.',source:picked[0],trace:['Поисковый запрос: '+querySearch(q),'Отфильтровал статьи-списки значений.','Ранжировал страницы по совпадению темы.','Выделил наиболее релевантные предложения.','Сохранил ссылки в историю источников, но не записывал факты в локальную память.']};
+}>
